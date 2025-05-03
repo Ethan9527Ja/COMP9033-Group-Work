@@ -1,0 +1,522 @@
+[
+    {
+        "id": "7e17d28917c7516d",
+        "type": "tab",
+        "label": "流程 1",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "724cad40b25fe276",
+        "type": "amazon config",
+        "name": "AWS",
+        "region": "ap-southeast-2",
+        "proxyRequired": false,
+        "proxy": ""
+    },
+    {
+        "id": "b6a35e0547c30979",
+        "type": "global-config",
+        "name": "global-config",
+        "env": [
+            {
+                "name": "GOOGLE_API_KEY",
+                "value": "AIzaSyB-u9cmmEpHiU7VN4FHjpTNxaV9mNFGzO0",
+                "type": "str"
+            }
+        ]
+    },
+    {
+        "id": "938d04e8342337cc",
+        "type": "websocket-listener",
+        "path": "/ws/dashboard",
+        "wholemsg": "true"
+    },
+    {
+        "id": "e6170d3426139cb8",
+        "type": "inject",
+        "z": "7e17d28917c7516d",
+        "name": "Timed trigger simulated data",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "60",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.1,
+        "topic": "windfarm/turbine1/data",
+        "payload": "",
+        "payloadType": "date",
+        "x": 510,
+        "y": 180,
+        "wires": [
+            [
+                "80669f956aa3c481"
+            ]
+        ]
+    },
+    {
+        "id": "80669f956aa3c481",
+        "type": "function",
+        "z": "7e17d28917c7516d",
+        "name": "generateSimulatedData",
+        "func": "// ---------------- helpers ----------------\nfunction randn(mean, std) {\n    let u = 1 - Math.random();\n    let v = 1 - Math.random();\n    return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v) * std + mean;\n}\nfunction smooth(prev, next, alpha) {\n    return (prev === undefined) ? next : prev + alpha * (next - prev);\n}\nconst α = 0.2;                          // 平滑系数，可调小一点更平滑\nlet last = context.get('last') || {};   // 取出上一次值\n\n// --------------- raw simulation ---------------\nlet windSpeedRaw   = Math.max(0, randn(10, 3));\nlet rotorSpeedRaw  = (windSpeedRaw < 3 || windSpeedRaw > 25)\n                   ? 0\n                   : (windSpeedRaw <= 12\n                      ? windSpeedRaw / 12 * 25\n                      : 25) + randn(0, 1);\nlet temperatureRaw = Math.min(90, Math.max(30, randn(55, 8)));\nlet vibrationRaw   = Math.abs(randn(1.5, 1.0));\nlet powerRaw       = (windSpeedRaw < 3 || windSpeedRaw > 25)\n                   ? 0\n                   : (windSpeedRaw <= 12\n                      ? Math.pow(windSpeedRaw / 12, 3) * 2300\n                      : 2300);\n\n// 故障注入保持原逻辑\nif (Math.random() < 0.05 && windSpeedRaw >= 3 && windSpeedRaw <= 25) {\n    temperatureRaw += 20 + Math.random() * 5;\n    vibrationRaw   += 4  + Math.random() * 2;\n}\n\n// --------------- apply smoothing ---------------\nlet windSpeed   = smooth(last.windSpeed,   windSpeedRaw,   α);\nlet rotorSpeed  = smooth(last.rotorSpeed,  rotorSpeedRaw,  α);\nlet temperature = smooth(last.temperature, temperatureRaw, α);\nlet vibration   = smooth(last.vibration,   vibrationRaw,   α);\nlet power       = smooth(last.power,       powerRaw,       α);\n\n// --------------- assemble object ---------------\nlet p = {\n    turbineId:   \"T1\",\n    timestamp:   Date.now(),\n    windSpeed:   Number(windSpeed.toFixed(2)),\n    rotorSpeed:  Number(rotorSpeed.toFixed(1)),\n    temperature: Number(temperature.toFixed(1)),\n    vibration:   Number(vibration.toFixed(2)),\n    power:       Number(power.toFixed(1))\n};\nmsg.t = p;\nmsg.payload = { ...p };        // 与原结构保持一致\n\nmsg.TableName = \"TurbineData\";\nmsg.Item = {\n    turbineId:   { S: p.turbineId },\n    timestamp:   { S: String(p.timestamp) },\n    windSpeed:   { N: String(p.windSpeed) },\n    rotorSpeed:  { N: String(p.rotorSpeed) },\n    temperature: { N: String(p.temperature) },\n    vibration:   { N: String(p.vibration) },\n    power:       { N: String(p.power) }\n};\n\n// --------------- store current values ---------------\ncontext.set('last', { windSpeed, rotorSpeed, temperature, vibration, power });\n\nreturn msg;\n\n\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 890,
+        "y": 180,
+        "wires": [
+            [
+                "fb9f8da8e93ed8db",
+                "d93ba7acc2832ca8"
+            ]
+        ]
+    },
+    {
+        "id": "fb9f8da8e93ed8db",
+        "type": "AWS DynamoDB",
+        "z": "7e17d28917c7516d",
+        "aws": "724cad40b25fe276",
+        "operation": "PutItem",
+        "Statements": "",
+        "RequestItems": "",
+        "TableName": "",
+        "BackupName": "",
+        "GlobalTableName": "",
+        "ReplicationGroup": "",
+        "AttributeDefinitions": "",
+        "KeySchema": "",
+        "BackupArn": "",
+        "Key": "",
+        "ExportArn": "",
+        "Statement": "",
+        "TransactStatements": "",
+        "TableArn": "",
+        "S3Bucket": "",
+        "ResourceArn": "",
+        "Item": "",
+        "TargetTableName": "",
+        "Tags": "",
+        "TransactItems": "",
+        "TagKeys": "",
+        "PointInTimeRecoverySpecification": "",
+        "ContributorInsightsAction": "",
+        "ReplicaUpdates": "",
+        "TimeToLiveSpecification": "",
+        "name": "",
+        "x": 980,
+        "y": 560,
+        "wires": [
+            [],
+            []
+        ]
+    },
+    {
+        "id": "d93ba7acc2832ca8",
+        "type": "function",
+        "z": "7e17d28917c7516d",
+        "name": "callGoogleAi",
+        "func": "// Function: callGoogleGemini\n// Prepare and send a request to Google Gemini 1.5-Flash using the sensor data in msg.payload\n\n// 1. 从环境变量读 API Key\nconst apiKey = env.get(\"GOOGLE_API_KEY\");\n\n// 2. 构造 HTTP 请求的 URL（model 作为路径参数）\nmsg.url    = \"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=\" + apiKey;\n// 3. 指定 POST 方法\nmsg.method = \"POST\";\n// 4. 设置请求头\nmsg.headers = { \"Content-Type\": \"application/json\" };\n\n// 5. 拼 prompt 文本（从上游 msg.payload 取传感器数值）\nconst p = msg.payload;\nconst promptText =\n`You are a wind turbine fault detection assistant.\nModel: 2017 COE Market Average 2.3 MW\nRanges:\n- Wind speed: 3–25 m/s (no generation below 3 m/s; shutdown above 25 m/s)\n- Rotor speed: 10–25 rpm\n- Gearbox oil temperature: 45–65 °C\n- Vibration level: ≤2.8 mm/s normal; 2.8–4.5 mm/s warning; >4.5 mm/s alarm\n- Output power: 0–2300 kW (ramp up to 2300 kW in 3–11 m/s; maintain at 2300 in 11–25 m/s; shutdown above 25 m/s)\n\nCurrent readings:\n- temperature: ${p.temperature}\n- vibration:   ${p.vibration}\n- rotorSpeed:  ${p.rotorSpeed}\n- power:       ${p.power}\n\nReturn strictly JSON in this format:\n{\"result\":\"NORMAL|FAULT\",\"reason\":\"brief explanation\"}`;\n\n// 6. 构造符合 GenerateContentRequest 的请求体\nmsg.payload = {\n  // contents 数组，每项是一个 Content 对象，需用 parts[] 包裹 text\n  contents: [\n    {\n      parts: [\n        { text: promptText }\n      ]\n    }\n  ],\n  // generationConfig 对应官方文档里的 GenerationConfig\n  generationConfig: {\n    temperature:      0.0,\n    maxOutputTokens: 128\n  }\n};\n\nreturn msg;\n\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1250,
+        "y": 180,
+        "wires": [
+            [
+                "81cb9baddf5869f0",
+                "ed6da265a8637fe2"
+            ]
+        ]
+    },
+    {
+        "id": "81cb9baddf5869f0",
+        "type": "http request",
+        "z": "7e17d28917c7516d",
+        "name": "",
+        "method": "use",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 1300,
+        "y": 460,
+        "wires": [
+            [
+                "88c921036e0eca17",
+                "ec3e2a8d3e45c9a7"
+            ]
+        ]
+    },
+    {
+        "id": "ec3e2a8d3e45c9a7",
+        "type": "function",
+        "z": "7e17d28917c7516d",
+        "name": "fetchGoogleAiResult",
+        "func": "\n\n// Function: parseAIResult (Function2)\n// 将 HTTP Request 返回的字符串化 JSON 解析成 {result, reason}\n\nlet respStr = msg.payload;\n\n// 1. 先把 respStr 转成 JS 对象\nlet respObj;\ntry {\n    respObj = JSON.parse(respStr);\n} catch (e) {\n    node.error(\"Invalid JSON from HTTP response: \" + e.message, msg);\n    return null;\n}\n\n// 2. 提取 AI 输出的带 ```json 代码块的文本\nlet raw = respObj.candidates?.[0]?.content?.parts?.[0]?.text;\nif (typeof raw !== 'string') {\n    node.error(\"No AI content found in respObj\", msg);\n    return null;\n}\n\n// 3. 去掉开头的 ```json 和结尾的 ```\nraw = raw\n    .replace(/^```json[\\r\\n]*/, \"\")\n    .replace(/```[\\r\\n]*$/, \"\")\n    .trim();\n\n// 4. 解析内部的 JSON 字符串\nlet resultObj;\ntry {\n    resultObj = JSON.parse(raw);\n} catch (e) {\n    node.error(\"Invalid inner JSON: \" + e.message, msg);\n    resultObj = { result: \"ERROR\", reason: \"Invalid JSON\" };\n}\n\n// 5. 将最终结果写入 msg.payload 并返回\nmsg.payload = {\n    result: resultObj.result,\n    reason: resultObj.reason\n};\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1580,
+        "y": 560,
+        "wires": [
+            [
+                "c0eda2a3b744576e",
+                "f285c4fea1b5a35d"
+            ]
+        ]
+    },
+    {
+        "id": "88c921036e0eca17",
+        "type": "debug",
+        "z": "7e17d28917c7516d",
+        "name": "debug 1",
+        "active": true,
+        "tosidebar": true,
+        "console": true,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 1610,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "ed6da265a8637fe2",
+        "type": "debug",
+        "z": "7e17d28917c7516d",
+        "name": "debug 2",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1620,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "c0eda2a3b744576e",
+        "type": "debug",
+        "z": "7e17d28917c7516d",
+        "name": "debug 3",
+        "active": true,
+        "tosidebar": true,
+        "console": true,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 2030,
+        "y": 340,
+        "wires": []
+    },
+    {
+        "id": "f285c4fea1b5a35d",
+        "type": "switch",
+        "z": "7e17d28917c7516d",
+        "name": "judgements",
+        "property": "payload.result",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "FAULT",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "NORMAL",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1790,
+        "y": 680,
+        "wires": [
+            [
+                "01e58f2ec69abdc0"
+            ],
+            [
+                "08f545843453491b"
+            ]
+        ]
+    },
+    {
+        "id": "01e58f2ec69abdc0",
+        "type": "function",
+        "z": "7e17d28917c7516d",
+        "name": "FLAUTprepareS3Log",
+        "func": "// Function: prepareS3LogForPutObject\n// 这里改成用 msg.t 来读最初的风机数据\n\n// 1️⃣ 拿到原始模拟数据\nconst data = msg.t;\nif (!data) {\n    node.error(\"msg.t is undefined – 没有原始传感器数据\", msg);\n    return null;\n}\n\n// 2️⃣ 拿到 AI 结果\nconst ai = msg.payload;\nif (!ai || typeof ai.result !== 'string') {\n    node.error(\"msg.payload 不包含 AI 结果\", msg);\n    return null;\n}\nmsg.ai = ai\n\n// 3️⃣ 组装日志对象\nconst now = new Date().toISOString();\nconst logObj = {\n    turbineId: data.turbineId,\n    timestamp: data.timestamp,\n    windSpeed: data.windSpeed,\n    rotorSpeed: data.rotorSpeed,\n    temperature: data.temperature,\n    vibration: data.vibration,\n    power: data.power,\n    result: ai.result,\n    reason: ai.reason\n};\n\n// 4️⃣ 填写 S3 PutObject 所需字段\nmsg.Bucket = \"my-turbine-logs\";       // 你的 S3 bucket\nmsg.Key = `logs/${now}.json`;      // 存到 logs/2025-…Z.json\nmsg.Body = JSON.stringify(logObj);  // Body 必须是字符串\nmsg.ContentType = \"application/json\";      // 可选，标明 JSON\n\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2360,
+        "y": 600,
+        "wires": [
+            [
+                "fe11a3e9987b652a",
+                "99870f9e6352387b",
+                "aa66efd454241817"
+            ]
+        ]
+    },
+    {
+        "id": "08f545843453491b",
+        "type": "function",
+        "z": "7e17d28917c7516d",
+        "name": "NORMALprepareS3Log",
+        "func": "// Function: prepareS3LogForPutObject\n// 这里改成用 msg.t 来读最初的风机数据\n\n// 1️⃣ 拿到原始模拟数据\nconst data = msg.t;\nif (!data) {\n    node.error(\"msg.t is undefined – 没有原始传感器数据\", msg);\n    return null;\n}\n\n// 2️⃣ 拿到 AI 结果\nconst ai = msg.payload;\nif (!ai || typeof ai.result !== 'string') {\n    node.error(\"msg.payload 不包含 AI 结果\", msg);\n    return null;\n}\n\n// 3️⃣ 组装日志对象\nconst now = new Date().toISOString();\nconst logObj = {\n    turbineId: data.turbineId,\n    timestamp: data.timestamp,\n    windSpeed: data.windSpeed,\n    rotorSpeed: data.rotorSpeed,\n    temperature: data.temperature,\n    vibration: data.vibration,\n    power: data.power,\n    result: ai.result,\n    reason: ai.reason\n};\n\n// 4️⃣ 填写 S3 PutObject 所需字段\nmsg.Bucket = \"my-turbine-logs\";       // 你的 S3 bucket\nmsg.Key = `logs/${now}.json`;      // 存到 logs/2025-…Z.json\nmsg.Body = JSON.stringify(logObj);  // Body 必须是字符串\nmsg.ContentType = \"application/json\";      // 可选，标明 JSON\n\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2370,
+        "y": 740,
+        "wires": [
+            [
+                "8b9f623f74438434",
+                "aa66efd454241817"
+            ]
+        ]
+    },
+    {
+        "id": "fe11a3e9987b652a",
+        "type": "AWS S3",
+        "z": "7e17d28917c7516d",
+        "aws": "724cad40b25fe276",
+        "operation": "PutObject",
+        "Bucket": "my-turbine-logs",
+        "Key": "",
+        "UploadId": "{{{payload}}}",
+        "CopySource": "",
+        "Id": "",
+        "Delete": "",
+        "AccelerateConfiguration": "",
+        "AnalyticsConfiguration": "",
+        "CORSConfiguration": "",
+        "ServerSideEncryptionConfiguration": "",
+        "IntelligentTieringConfiguration": "",
+        "InventoryConfiguration": "",
+        "BucketLoggingStatus": "",
+        "MetricsConfiguration": "",
+        "NotificationConfiguration": "",
+        "OwnershipControls": "",
+        "Policy": "",
+        "ReplicationConfiguration": "",
+        "RequestPaymentConfiguration": "",
+        "Tagging": "",
+        "VersioningConfiguration": "",
+        "WebsiteConfiguration": "",
+        "PublicAccessBlockConfiguration": "",
+        "Expression": "",
+        "ExpressionType": "",
+        "InputSerialization": "",
+        "OutputSerialization": "",
+        "PartNumber": "",
+        "name": "",
+        "x": 2610,
+        "y": 600,
+        "wires": [
+            [
+                "5c7f90a4fc666958"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "8b9f623f74438434",
+        "type": "AWS S3",
+        "z": "7e17d28917c7516d",
+        "aws": "724cad40b25fe276",
+        "operation": "PutObject",
+        "Bucket": "my-turbine-logs",
+        "Key": "",
+        "UploadId": "",
+        "CopySource": "",
+        "Id": "",
+        "Delete": "",
+        "AccelerateConfiguration": "",
+        "AnalyticsConfiguration": "",
+        "CORSConfiguration": "",
+        "ServerSideEncryptionConfiguration": "",
+        "IntelligentTieringConfiguration": "",
+        "InventoryConfiguration": "",
+        "BucketLoggingStatus": "",
+        "MetricsConfiguration": "",
+        "NotificationConfiguration": "",
+        "OwnershipControls": "",
+        "Policy": "",
+        "ReplicationConfiguration": "",
+        "RequestPaymentConfiguration": "",
+        "Tagging": "",
+        "VersioningConfiguration": "",
+        "WebsiteConfiguration": "",
+        "PublicAccessBlockConfiguration": "",
+        "Expression": "",
+        "ExpressionType": "",
+        "InputSerialization": "",
+        "OutputSerialization": "",
+        "PartNumber": "",
+        "name": "",
+        "x": 2610,
+        "y": 740,
+        "wires": [
+            [],
+            []
+        ]
+    },
+    {
+        "id": "99870f9e6352387b",
+        "type": "debug",
+        "z": "7e17d28917c7516d",
+        "name": "debug 4",
+        "active": true,
+        "tosidebar": true,
+        "console": true,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 2990,
+        "y": 520,
+        "wires": []
+    },
+    {
+        "id": "5c7f90a4fc666958",
+        "type": "function",
+        "z": "7e17d28917c7516d",
+        "name": "prepareAlert",
+        "func": "// msg.t        — 你的原始风机数据对象\n// msg.payload  — parseAIResult 后的 { result, reason }\n\n// 1) 指定要发到哪个 SNS 主题\nmsg.TopicArn = \"arn:aws:sns:ap-southeast-2:135808957475:turbine-alerts\";\n\n// 2) 构造你想发的文本\nconst data = msg.t;\nconst ai = msg.ai;\nmsg.Message =\n    `🚨 Wind Turbine Fault 🚨\nTurbine: ${data.turbineId}\nTime   : ${new Date(data.timestamp).toLocaleString()}\n\nResult : ${ai.result}\nReason : ${ai.reason}\n\nWindSpeed  ${data.windSpeed} m/s\nRotorSpeed ${data.rotorSpeed} rpm\nTemperature ${data.temperature} °C\nVibration  ${data.vibration} mm/s\nPower      ${data.power} kW\n`;\n\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2910,
+        "y": 600,
+        "wires": [
+            [
+                "ace48df6cd135481",
+                "c8c9a040a4ef86e0"
+            ]
+        ]
+    },
+    {
+        "id": "ace48df6cd135481",
+        "type": "AWS SNS",
+        "z": "7e17d28917c7516d",
+        "aws": "724cad40b25fe276",
+        "operation": "Publish",
+        "TopicArn": "",
+        "Label": "",
+        "AWSAccountId": "",
+        "ActionName": "",
+        "phoneNumber": "",
+        "Token": "",
+        "Name": "",
+        "Platform": "",
+        "Attributes": "",
+        "PlatformApplicationArn": "",
+        "EndpointArn": "",
+        "SubscriptionArn": "",
+        "ResourceArn": "",
+        "Message": "",
+        "attributes": "",
+        "AttributeName": "",
+        "Protocol": "",
+        "Tags": "",
+        "TagKeys": "",
+        "name": "",
+        "x": 3150,
+        "y": 600,
+        "wires": [
+            [
+                "1a75a7dbd49cba35"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "c8c9a040a4ef86e0",
+        "type": "debug",
+        "z": "7e17d28917c7516d",
+        "name": "debug 5",
+        "active": true,
+        "tosidebar": true,
+        "console": true,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 3210,
+        "y": 720,
+        "wires": []
+    },
+    {
+        "id": "1a75a7dbd49cba35",
+        "type": "debug",
+        "z": "7e17d28917c7516d",
+        "name": "debug 6",
+        "active": true,
+        "tosidebar": true,
+        "console": true,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 3410,
+        "y": 540,
+        "wires": []
+    },
+    {
+        "id": "aa66efd454241817",
+        "type": "websocket out",
+        "z": "7e17d28917c7516d",
+        "name": "",
+        "server": "938d04e8342337cc",
+        "client": "",
+        "x": 2650,
+        "y": 400,
+        "wires": []
+    }
+]
