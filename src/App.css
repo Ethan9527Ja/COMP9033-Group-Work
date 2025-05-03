@@ -1,38 +1,220 @@
 .App {
-  text-align: center;
-}
-
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+  background-color: #f0f2f5;
   min-height: 100vh;
+}
+
+h1 {
+  text-align: center;
+  color: #1a1a1a;
+  margin-bottom: 30px;
+  font-size: 2.2em;
+  font-weight: 600;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.dashboard-grid {
+  display: grid;
+  gap: 25px;
+  grid-template-columns: 1fr;
+}
+
+.status-panel,
+.chart-panel,
+.fault-panel {
+  background: white;
+  border-radius: 12px;
+  padding: 25px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.status-panel:hover,
+.chart-panel:hover,
+.fault-panel:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+h2 {
+  color: #1a1a1a;
+  margin-top: 0;
+  margin-bottom: 25px;
+  font-size: 1.5em;
+  font-weight: 500;
+  border-bottom: 2px solid #f0f2f5;
+  padding-bottom: 10px;
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+.status-grid>div {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  font-size: 15px;
+  border: 1px solid #e9ecef;
+  transition: all 0.2s ease;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  gap: 8px;
 }
 
-.App-link {
-  color: #61dafb;
+.status-grid>div:hover {
+  background: #fff;
+  border-color: #dee2e6;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
-@keyframes App-logo-spin {
+.status-label {
+  color: #666;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.status-value {
+  color: #1a1a1a;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.chart-panel {
+  overflow-x: auto;
+  background: linear-gradient(to bottom right, #ffffff, #f8f9fa);
+}
+
+.fault-list {
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+.fault-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.fault-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.fault-list::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.fault-list::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+.fault-item {
+  background: #fff5f5;
+  border-left: 4px solid #ff6b6b;
+  padding: 15px;
+  margin-bottom: 12px;
+  border-radius: 0 8px 8px 0;
+  transition: all 0.2s ease;
+}
+
+.fault-item:hover {
+  background: #ffe3e3;
+  transform: translateX(4px);
+}
+
+.fault-time {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.fault-reason {
+  font-size: 15px;
+  color: #1a1a1a;
+  line-height: 1.4;
+}
+
+.no-faults {
+  text-align: center;
+  color: #666;
+  padding: 20px;
+  font-size: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px dashed #dee2e6;
+}
+
+@media (min-width: 1024px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr 2fr;
+  }
+
+  .fault-panel {
+    grid-column: 1 / -1;
+  }
+}
+
+/* 添加一些动画效果 */
+@keyframes fadeIn {
   from {
-    transform: rotate(0deg);
+    opacity: 0;
+    transform: translateY(10px);
   }
+
   to {
-    transform: rotate(360deg);
+    opacity: 1;
+    transform: translateY(0);
   }
+}
+
+.status-panel,
+.chart-panel,
+.fault-panel {
+  animation: fadeIn 0.5s ease-out;
+}
+
+/* 添加响应式设计 */
+@media (max-width: 768px) {
+  .App {
+    padding: 15px;
+  }
+
+  h1 {
+    font-size: 1.8em;
+  }
+
+  .status-grid {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+
+  .status-value {
+    font-size: 16px;
+  }
+}
+
+.connection-status {
+  text-align: center;
+  padding: 10px;
+  margin-bottom: 20px;
+  font-weight: 500;
+  font-size: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.no-data {
+  text-align: center;
+  color: #666;
+  padding: 40px 20px;
+  font-size: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px dashed #dee2e6;
 }
